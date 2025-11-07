@@ -1,0 +1,9 @@
+[
+  { "_id": 1, "cim": "Egri csillagok", "szerzo": "Gárdonyi Géza", "kiadas_eve": 1901, "konyvtar_id": 1 },
+  { "_id": 2, "cim": "A Pál utcai fiúk", "szerzo": "Molnár Ferenc", "kiadas_eve": 1906, "konyvtar_id": 1 },
+  { "_id": 3, "cim": "Az ember tragédiája", "szerzo": "Madách Imre", "kiadas_eve": 1861, "konyvtar_id": 1 },
+  { "_id": 4, "cim": "A Győri vár története", "szerzo": "Kiss László", "kiadas_eve": 2005, "konyvtar_id": 2 },
+  { "_id": 5, "cim": "Informatika alapjai", "szerzo": "Tóth Péter", "kiadas_eve": 2018, "konyvtar_id": 2 },
+  { "_id": 6, "cim": "Tűzoltók a faluban", "szerzo": "Nagy János", "kiadas_eve": 2020, "konyvtar_id": 3 },
+  { "_id": 7, "cim": "Mesék gyerekeknek", "szerzo": "Benedek Elek", "kiadas_eve": 1910, "konyvtar_id": 3 }
+]

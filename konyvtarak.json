@@ -1,0 +1,20 @@
+[
+  {
+    "_id": 1,
+    "nev": "Széchényi Könyvtár",
+    "varos": "Budapest",
+    "alapitas_eve": 1802
+  },
+  {
+    "_id": 2,
+    "nev": "Városi Könyvtár",
+    "varos": "Győr",
+    "alapitas_eve": 1960
+  },
+  {
+    "_id": 3,
+    "nev": "Falusi Könyvtár",
+    "varos": "Szil",
+    "alapitas_eve": 1995
+  }
+]
