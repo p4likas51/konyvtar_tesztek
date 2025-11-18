@@ -122,5 +122,13 @@ app.delete('/api/konyvtarak/:id', async (req, res) => {
 // -----------------
 // Szerver indítása
 // -----------------
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🌍 Szerver fut a http://localhost:${PORT} címen`));
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🌍 Szerver fut a http://localhost:${PORT} címen`);
+  });
+}
+
+module.exports = app;;
