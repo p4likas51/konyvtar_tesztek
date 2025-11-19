@@ -1,61 +1,41 @@
 const request = require('supertest');
 
-// -----------------------------------------------------------
-// FÜGGŐSÉGEK MOCKOLÁSA (Mindig az app importálása előtt!)
-// -----------------------------------------------------------
-
-// 1. Mongoose Mockolása (megoldva a Schema.Types.ObjectId hibát)
 jest.mock('mongoose', () => ({
-  connect: jest.fn().mockResolvedValue(), // Kapcsolódás mockolása
+  connect: jest.fn().mockResolvedValue(),
   
-  // A sémák deklarálásához kell (Konyv.js és Konyvtar.js)
-  Schema: function() { return { paths: {} }; }, // Konstruktor mockolása
+  Schema: function() { return { paths: {} }; },
   
-  // Szükséges a ref mező miatt a Konyv.js-ben
   Types: {
     ObjectId: {
         toString: () => 'ObjectId' 
     }
   },
-  model: jest.fn(() => ({})), // Model metódus mockolása
-  set: jest.fn(), // Ha esetleg használná (bár a server.js-ben nincs)
+  model: jest.fn(() => ({})),
+  set: jest.fn(),
 }));
 
-// 2. Konyvtar Modell Mockolása
 jest.mock('../models/Konyvtar', () => {
-    // Ezt az objektumot adja vissza a require('../models/Konyvtar')
     return {
-        // A teszteléshez szükséges metódusok mockolása
         findByIdAndDelete: jest.fn(),
     };
 });
 
-// 3. Konyv Modell Mockolása (a server.js betölti, ezért ez is kell)
 jest.mock('../models/Konyv', () => ({}));
 
-// 4. .env fájl (dotenv) mockolása
 jest.mock('dotenv', () => ({
     config: jest.fn()
 }));
 
-// Mockoljuk a .env változókat (a server.js-ben szerepelnek)
 process.env.MONGO_URI = 'mongodb://mock.uri';
 process.env.PORT = 3000;
-process.env.NODE_ENV = 'test'; // Biztosítja, hogy a szerver ne induljon el a teszt alatt
+process.env.NODE_ENV = 'test';
 
-// -----------------------------------------------------------
-// IMPORTOK
-// -----------------------------------------------------------
 
-const Konyvtar = require('../models/Konyvtar'); // A mockolt modell
-const app = require('../server'); // A tesztelendő Express alkalmazás
+const Konyvtar = require('../models/Konyvtar');
+const app = require('../server');
 
-// -----------------------------------------------------------
-// TESZTEK
-// -----------------------------------------------------------
 
 beforeEach(() => {
-  // Minden teszt előtt töröljük a mock hívási előzményeket
   jest.clearAllMocks();
 });
 
