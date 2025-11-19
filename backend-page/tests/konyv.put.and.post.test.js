@@ -5,7 +5,6 @@ const request = require('supertest');
 
 // Mongoose mock a kapcsolat és az ObjectId kezeléséhez
 jest.mock('mongoose', () => {
-  // A mongoose.Types.ObjectId.isValid és isValidObjectId-hez
   const isValidObjectId = jest.fn((id) => typeof id === 'string' && id.length === 24);
 
   return {
@@ -23,26 +22,26 @@ jest.mock('mongoose', () => {
 // Konyv modell mock-ja a CRUD metódusok szimulálásához
 jest.mock('../models/Konyv', () => {
   const save = jest.fn();
+  // Meghatározzuk a FIX mock ID-t, amit a konstruktor használni fog
+  const MOCK_NEW_ID = '654321098765432109876543'; 
 
-  // Jest spy-t adunk vissza a Konyv konstruktornak, hogy megfelelően kezelje a .toHaveBeenCalledWith-t
   const Konyv = jest.fn(function(data) {
-    // Automatikus ID a sikeres POST tesztekhez
-    this._id = '654321098765432109876543'; 
-    // Az adatok a mock objektum gyökerére kerülnek a válasz teszteléséhez
+    // FIX ID beállítása, amit a tesztek is várnak
+    this._id = MOCK_NEW_ID; 
     Object.assign(this, data); 
-    // A save promise-t ad vissza, ami az új objektummal oldódik fel
+    // A save visszatér az aktuális objektummal
     this.save = save.mockResolvedValue(this); 
-    return this; // Konstruktorként is működnie kell
+    return this; 
   });
   
-  // Mockoljuk a Mongoose statikus metódusait
   Konyv.find = jest.fn();
   Konyv.findById = jest.fn();
   Konyv.findByIdAndUpdate = jest.fn();
   Konyv.findByIdAndDelete = jest.fn();
 
-  // Exportáljuk a save mock-ot az egyedi hibák teszteléséhez
   Konyv.__saveMock = save;
+  // Külön exportáljuk a FIX ID-t, hogy a tesztek hivatkozhassanak rá
+  Konyv.MOCK_NEW_ID = MOCK_NEW_ID;
 
   return Konyv;
 });
@@ -65,17 +64,17 @@ describe('POST /api/konyvek', () => {
     kiadas_eve: 2023,
     konyvtar_id: '507f1f77bcf86cd799439011'
   };
+  // Hivatkozás a fix mock ID-ra
+  const mockId = Konyv.MOCK_NEW_ID; 
 
   it('1. Sikeres könyvlétrehozás esetén 201-et ad vissza', async () => {
-    // Visszaállítjuk a save mockot a sikeres resolve-ra
-    Konyv.__saveMock.mockResolvedValueOnce({ _id: '123456789012345678901234', ...newBook });
+    // A save-nek vissza kell térnie egy objektummal (ez a Konyv konstruktorban beállított alapértelmezett)
 
     const res = await request(app)
       .post('/api/konyvek')
       .send(newBook);
 
     expect(res.status).toBe(201);
-    // JAVÍTÁS: Mivel Konyv most már jest.fn(), használhatjuk a toHaveBeenCalledWith-t
     expect(Konyv).toHaveBeenCalledWith(newBook);
     expect(Konyv.__saveMock).toHaveBeenCalledTimes(1);
     expect(res.body).toHaveProperty('cim', newBook.cim);
@@ -84,7 +83,6 @@ describe('POST /api/konyvek', () => {
   it('2. Hiányzó kötelező mező (cim) esetén 400-at ad vissza', async () => {
     const invalidBook = { ...newBook, cim: undefined };
     
-    // Mockoljuk a save hiba dobását a validációs hiba szimulálására
     Konyv.__saveMock.mockRejectedValueOnce(new Error('Könyv validációs hiba: Path `cim` is required.'));
 
     const res = await request(app)
@@ -100,7 +98,6 @@ describe('POST /api/konyvek', () => {
   it('3. Hibás adattípus (kiadas_eve string) esetén 400-at ad vissza', async () => {
     const invalidBook = { ...newBook, kiadas_eve: 'nem szám' };
 
-    // Mockoljuk a save hiba dobását a Cast/Validációs hiba szimulálására
     Konyv.__saveMock.mockRejectedValueOnce(new Error('Könyv validációs hiba: kiadas_eve: Cast to Number failed.'));
 
     const res = await request(app)
@@ -114,21 +111,20 @@ describe('POST /api/konyvek', () => {
   });
   
   it('4. Helyes JSON formátummal tér vissza, tartalmazza az új _id-t', async () => {
-    const mockId = '123456789012345678901234';
-    // Módosítjuk a mock-ot, hogy egy specifikus ID-vel térjen vissza
-    Konyv.__saveMock.mockResolvedValueOnce({ _id: mockId, ...newBook });
+    // A save-nek vissza kell térnie egy objektummal, ami tartalmazza a mockId-t és az adatokat (ezt már a mock konstruktor garantálja)
     
     const res = await request(app)
       .post('/api/konyvek')
       .send(newBook);
 
     expect(res.status).toBe(201);
-    // Ellenőrizzük, hogy a válasz tartalmazza a létrehozott objektum kulcsait és a mock ID-t
+    // Várjuk a fix mock ID-t és az adatokat
     expect(res.body).toEqual(expect.objectContaining({
-      _id: mockId,
+      _id: mockId, // Ezt a FIX ID-t várjuk!
       cim: newBook.cim,
       szerzo: newBook.szerzo,
-      kiadas_eve: newBook.kiadas_eve
+      kiadas_eve: newBook.kiadas_eve,
+      konyvtar_id: newBook.konyvtar_id 
     }));
   });
 });
@@ -149,7 +145,6 @@ describe('PUT /api/konyvek/:id', () => {
   };
 
   it('1. Sikeres frissítés esetén 200-at és a frissített könyvet adja vissza', async () => {
-    // Mockoljuk a Mongoose frissítési függvényt a frissített objektummal
     Konyv.findByIdAndUpdate.mockResolvedValue(updatedBook);
 
     const res = await request(app)
@@ -157,17 +152,15 @@ describe('PUT /api/konyvek/:id', () => {
       .send(updateData);
 
     expect(res.status).toBe(200);
-    // Ellenőrizzük, hogy a metódus a helyes paraméterekkel lett hívva
     expect(Konyv.findByIdAndUpdate).toHaveBeenCalledWith(
       validId, 
       updateData, 
-      { new: true } // Fontos a { new: true } opció ellenőrzése
+      { new: true }
     );
     expect(res.body.cim).toBe(updateData.cim);
   });
   
   it('2. Nem található könyv (null a válasz) esetén 200-at ad vissza null testtel', async () => {
-    // A szerver.js kódja nem ellenőrzi, hogy a visszatérés null-e PUT-nál, így res.json(null) történik.
     Konyv.findByIdAndUpdate.mockResolvedValue(null);
 
     const res = await request(app)
@@ -175,13 +168,11 @@ describe('PUT /api/konyvek/:id', () => {
       .send(updateData);
 
     expect(res.status).toBe(200);
-    // JAVÍTÁS: res.json(null) esetén null érkezik a body-ba.
     expect(res.body).toBe(null); 
   });
 
   it('3. Hibás (nem Mongoose) ID formátum esetén 400-at ad vissza', async () => {
     const invalidId = 'rosszID';
-    // Mongoose CastError-t szimulálunk (a catch blokkba fut)
     Konyv.findByIdAndUpdate.mockRejectedValue(new Error('CastError: Bad ObjectId'));
 
     const res = await request(app)
@@ -194,9 +185,8 @@ describe('PUT /api/konyvek/:id', () => {
   });
 
   it('4. Validációs hiba (pl. kötelező mező érvénytelenítése) esetén 400-at ad vissza', async () => {
-    const invalidUpdate = { szerzo: null }; // próbáljuk null-ra állítani a kötelező mezőt
+    const invalidUpdate = { szerzo: null }; 
     
-    // Mockoljuk a Mongoose validációs hiba dobását
     Konyv.findByIdAndUpdate.mockRejectedValue(new Error('Könyv validációs hiba: szerzo: Path `szerzo` is required.'));
 
     const res = await request(app)
